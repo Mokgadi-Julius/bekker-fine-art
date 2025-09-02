@@ -462,6 +462,24 @@ export function deleteArtwork(id: string): void {
   saveArtworks(newArtworks);
 }
 
+// Reset artworks to initial state (fix corrupted data)
+export function resetArtworks(): void {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.removeItem(ARTWORKS_KEY);
+    saveArtworks(INITIAL_ARTWORKS);
+    
+    addActivity({
+      type: 'content_updated',
+      title: 'Artworks reset',
+      description: 'Artwork data has been reset to clean initial state'
+    });
+  } catch (error) {
+    console.error('Error resetting artworks:', error);
+  }
+}
+
 // Hero slides data
 export const INITIAL_HERO_SLIDES = [
   {

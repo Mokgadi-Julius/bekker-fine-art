@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getArtworks, getHeroSlides, saveHeroSlides, addArtwork, updateArtwork, deleteArtwork, getContent, saveContent, getSales, addSale, updateSale, deleteSale, recordSale, resetSalesData, getCollage, saveCollage, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
+import { getArtworks, getHeroSlides, saveHeroSlides, addArtwork, updateArtwork, deleteArtwork, getContent, saveContent, getSales, addSale, updateSale, deleteSale, recordSale, resetSalesData, resetArtworks, getCollage, saveCollage, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
 import { 
   BarChart3, 
   Image, 
@@ -896,6 +896,19 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
             className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 text-sm"
           >
             Reset Sales Data
+          </button>
+          <button
+            onClick={() => {
+              if (confirm("Reset artworks to fix corrupted images? This will restore clean artwork data with proper images.")) {
+                resetArtworks();
+                setArtworks(getArtworks());
+                // Force refresh the page to clear any cached image issues
+                window.location.reload();
+              }
+            }}
+            className="px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 text-sm"
+          >
+            Fix Images
           </button>
           <button
             onClick={() => openModal()}
