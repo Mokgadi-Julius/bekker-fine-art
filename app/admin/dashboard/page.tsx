@@ -767,7 +767,7 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const selectedArtwork = artworks.find(a => a.id === formData.artworkId);
     if (!selectedArtwork) {
       alert("Please select an artwork");
@@ -818,7 +818,7 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
           customerEmail: formData.customerEmail,
           saleNotes: formData.notes
         };
-        updateArtwork(artwork.id, updatedArtwork);
+        await updateArtworkWithSync(artwork.id, updatedArtwork);
         setArtworks(prev => prev.map(a => a.id === artwork.id ? updatedArtwork : a));
       }
     } else {
@@ -863,7 +863,7 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
     }
   };
 
-  const markAsAvailable = (artworkId: string) => {
+  const markAsAvailable = async (artworkId: string) => {
     if (confirm("Mark this artwork as available again? This will remove the sale record.")) {
       const artwork = artworks.find(a => a.id === artworkId);
       if (artwork) {
@@ -874,7 +874,7 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
         delete updatedArtwork.customerEmail;
         delete updatedArtwork.saleNotes;
         updatedArtwork.status = "available";
-        updateArtwork(artworkId, updatedArtwork);
+        await updateArtworkWithSync(artworkId, updatedArtwork);
         setArtworks(prev => prev.map(a => a.id === artworkId ? updatedArtwork : a));
       }
       
@@ -1776,7 +1776,7 @@ function ArtworksManager({ quickAction }: { quickAction?: string | null }) {
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const artworkData = {
       id: editingArtwork?.id || `w${Date.now()}`,
       title: formData.title,
@@ -1789,10 +1789,10 @@ function ArtworksManager({ quickAction }: { quickAction?: string | null }) {
     };
 
     if (editingArtwork) {
-      updateArtwork(editingArtwork.id, artworkData);
+      await updateArtworkWithSync(editingArtwork.id, artworkData);
       setArtworks(prev => prev.map(a => a.id === editingArtwork.id ? artworkData : a));
     } else {
-      addArtwork(artworkData);
+      await addArtworkWithSync(artworkData);
       setArtworks(prev => [...prev, artworkData]);
     }
     
@@ -1851,7 +1851,7 @@ function ArtworksManager({ quickAction }: { quickAction?: string | null }) {
                   </button>
                   {artwork.status === "sold" && (
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (confirm("Mark this artwork as available again?")) {
                           const updatedArtwork = { ...artwork, status: "available" } as Artwork;
                           delete updatedArtwork.soldDate;
@@ -1859,7 +1859,7 @@ function ArtworksManager({ quickAction }: { quickAction?: string | null }) {
                           delete updatedArtwork.customerName;
                           delete updatedArtwork.customerEmail;
                           delete updatedArtwork.saleNotes;
-                          updateArtwork(artwork.id, updatedArtwork);
+                          await updateArtworkWithSync(artwork.id, updatedArtwork);
                           setArtworks(prev => prev.map(a => a.id === artwork.id ? updatedArtwork : a));
                         }
                       }}
