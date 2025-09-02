@@ -1562,14 +1562,29 @@ function ImageUpload({ images, onChange }: { images: string[]; onChange: (images
         continue;
       }
 
-      // Convert to base64 or object URL for demo purposes
-      // In a real app, you'd upload to a server/cloud storage
+      // Upload to server
       try {
-        const imageUrl = await convertFileToUrl(file);
-        newImages.push(imageUrl);
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Upload failed: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        if (result.success && result.url) {
+          newImages.push(result.url);
+        } else {
+          throw new Error(result.error || 'Upload failed');
+        }
       } catch (error) {
-        console.error('Error processing file:', error);
-        alert(`Error processing ${file.name}`);
+        console.error('Error uploading file:', error);
+        alert(`Error uploading ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
     
@@ -1577,20 +1592,6 @@ function ImageUpload({ images, onChange }: { images: string[]; onChange: (images
     onChange([...images, ...newImages]);
   };
 
-  const convertFileToUrl = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          resolve(e.target.result as string);
-        } else {
-          reject(new Error('Failed to read file'));
-        }
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
