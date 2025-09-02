@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getArtworks, getArtworksFromAPI, getHeroSlides, saveHeroSlides, addArtwork, addArtworkWithSync, updateArtwork, updateArtworkWithSync, deleteArtwork, getContent, saveContent, getSales, addSale, updateSale, deleteSale, recordSale, resetSalesData, resetArtworks, resetArtworksWithSync, getCollage, saveCollage, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
+import { getArtworks, getArtworksFromAPI, getHeroSlides, getHeroSlidesFromAPI, saveHeroSlides, saveHeroSlidesWithSync, addArtwork, addArtworkWithSync, updateArtwork, updateArtworkWithSync, deleteArtwork, getContent, getContentFromAPI, saveContent, saveContentWithSync, getSales, addSale, updateSale, deleteSale, recordSale, resetSalesData, resetSalesDataWithSync, resetArtworks, resetArtworksWithSync, getCollage, saveCollage, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
 import { 
   BarChart3, 
   Image, 
@@ -391,7 +391,7 @@ function HeroSliderManager() {
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // Check if we're adding a new slide and already have 5 slides
     if (!editingSlide && slides.length >= 5) {
       alert("Maximum of 5 slides allowed. Please delete a slide before adding a new one.");
@@ -415,11 +415,11 @@ function HeroSliderManager() {
     if (editingSlide) {
       const newSlides = slides.map(s => s.id === editingSlide.id ? slideData : s);
       setSlides(newSlides);
-      saveHeroSlides(newSlides);
+      await saveHeroSlidesWithSync(newSlides);
     } else {
       const newSlides = [...slides, slideData];
       setSlides(newSlides);
-      saveHeroSlides(newSlides);
+      await saveHeroSlidesWithSync(newSlides);
     }
     
     setIsModalOpen(false);
@@ -429,7 +429,7 @@ function HeroSliderManager() {
     if (confirm("Are you sure you want to delete this slide?")) {
       const newSlides = slides.filter(s => s.id !== id);
       setSlides(newSlides);
-      saveHeroSlides(newSlides);
+      await saveHeroSlidesWithSync(newSlides);
     }
   };
 
@@ -896,16 +896,21 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
         <h2 className="text-2xl font-bold">Sales Management</h2>
         <div className="flex gap-3">
           <button
-            onClick={() => {
-              if (confirm("Reset sales data to fix duplicates? This will restore the original sample data.")) {
-                resetSalesData();
-                setSales(getSales());
-                setArtworks(getArtworks());
+            onClick={async () => {
+              if (confirm("Reset sales data to fix duplicates? This will restore the original sample data across ALL browsers.")) {
+                try {
+                  await resetSalesDataWithSync();
+                  setSales(getSales());
+                  setArtworks(getArtworks());
+                } catch (error) {
+                  console.error('Error syncing sales reset:', error);
+                  alert('Reset completed locally. Other browsers will sync when they refresh.');
+                }
               }
             }}
             className="px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 text-sm"
           >
-            Reset Sales Data
+            Reset Sales Data (All Browsers)
           </button>
           <button
             onClick={async () => {
@@ -1282,9 +1287,9 @@ function ContentEditor() {
     setContent(getContent());
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
-      saveContent(content);
+      await saveContentWithSync(content);
       setHasChanges(false);
       alert("Content saved successfully!");
     } catch (error) {

@@ -610,7 +610,27 @@ export const INITIAL_HERO_SLIDES = [
 
 export type HeroSlide = typeof INITIAL_HERO_SLIDES[0];
 
-// Get hero slides from localStorage or return defaults
+// Get hero slides from API or localStorage fallback
+export async function getHeroSlidesFromAPI(): Promise<HeroSlide[]> {
+  try {
+    const response = await fetch('/api/hero-slides');
+    if (response.ok) {
+      const slides = await response.json();
+      // Cache in localStorage for offline access
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(HERO_SLIDES_KEY, JSON.stringify(slides));
+      }
+      return slides;
+    }
+  } catch (error) {
+    console.error('Error fetching hero slides from API:', error);
+  }
+  
+  // Fallback to localStorage
+  return getHeroSlides();
+}
+
+// Get hero slides from localStorage or return defaults (synchronous fallback)
 export function getHeroSlides(): HeroSlide[] {
   if (typeof window === 'undefined') return INITIAL_HERO_SLIDES;
   
@@ -626,7 +646,30 @@ export function getHeroSlides(): HeroSlide[] {
   return INITIAL_HERO_SLIDES;
 }
 
-// Save hero slides to localStorage
+// Save hero slides with API sync
+export async function saveHeroSlidesWithSync(slides: HeroSlide[]): Promise<void> {
+  try {
+    // Save to API first
+    const response = await fetch('/api/hero-slides', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(slides),
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      saveHeroSlides(slides);
+    } else {
+      throw new Error('Failed to save to API');
+    }
+  } catch (error) {
+    console.error('Error syncing hero slides:', error);
+    // Fallback to localStorage only
+    saveHeroSlides(slides);
+  }
+}
+
+// Save hero slides to localStorage (backwards compatibility)
 export function saveHeroSlides(slides: HeroSlide[]): void {
   if (typeof window === 'undefined') return;
   
@@ -670,7 +713,27 @@ export const INITIAL_CONTENT = {
 
 export type Content = typeof INITIAL_CONTENT;
 
-// Get content from localStorage or return defaults
+// Get content from API or localStorage fallback
+export async function getContentFromAPI(): Promise<Content> {
+  try {
+    const response = await fetch('/api/content');
+    if (response.ok) {
+      const content = await response.json();
+      // Cache in localStorage for offline access
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(CONTENT_KEY, JSON.stringify(content));
+      }
+      return content;
+    }
+  } catch (error) {
+    console.error('Error fetching content from API:', error);
+  }
+  
+  // Fallback to localStorage
+  return getContent();
+}
+
+// Get content from localStorage or return defaults (synchronous fallback)
 export function getContent(): Content {
   if (typeof window === 'undefined') return INITIAL_CONTENT;
   
@@ -686,7 +749,30 @@ export function getContent(): Content {
   return INITIAL_CONTENT;
 }
 
-// Save content to localStorage
+// Save content with API sync
+export async function saveContentWithSync(content: Content): Promise<void> {
+  try {
+    // Save to API first
+    const response = await fetch('/api/content', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(content),
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      saveContent(content);
+    } else {
+      throw new Error('Failed to save to API');
+    }
+  } catch (error) {
+    console.error('Error syncing content:', error);
+    // Fallback to localStorage only
+    saveContent(content);
+  }
+}
+
+// Save content to localStorage (backwards compatibility)
 export function saveContent(content: Content): void {
   if (typeof window === 'undefined') return;
   
@@ -854,7 +940,43 @@ export function saveSales(sales: Sale[]): void {
   }
 }
 
-// Reset sales data (for fixing duplicate issues)
+// Reset sales data with API sync
+export async function resetSalesDataWithSync(): Promise<void> {
+  try {
+    // Reset via API first
+    const response = await fetch('/api/sales/reset', {
+      method: 'POST',
+    });
+    
+    if (response.ok) {
+      // Clear localStorage and reload from API
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(SALES_KEY);
+      }
+      
+      // Get fresh data from API
+      const apiResponse = await fetch('/api/sales');
+      if (apiResponse.ok) {
+        const sales = await apiResponse.json();
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(SALES_KEY, JSON.stringify(sales));
+          window.dispatchEvent(new StorageEvent('storage', {
+            key: SALES_KEY,
+            newValue: JSON.stringify(sales)
+          }));
+        }
+      }
+    } else {
+      throw new Error('Failed to reset via API');
+    }
+  } catch (error) {
+    console.error('Error resetting via API, falling back to localStorage:', error);
+    // Fallback to localStorage reset
+    resetSalesData();
+  }
+}
+
+// Reset sales data (for fixing duplicate issues) - backwards compatibility
 export function resetSalesData(): void {
   if (typeof window === 'undefined') return;
   
