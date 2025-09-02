@@ -1274,8 +1274,8 @@ export default function BekkerFineArtPage() {
             >
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-2xl font-bold">Purchase Inquiry</h3>
-                  <p className="text-neutral-600">Submit your details to proceed with your order</p>
+                  <h3 className="text-2xl font-bold">Secure Payment</h3>
+                  <p className="text-neutral-600">Complete your purchase with PayFast secure payment</p>
                 </div>
                 <button
                   onClick={() => setCheckoutOpen(false)}
@@ -1348,65 +1348,98 @@ function CheckoutForm({
     setIsSubmitting(true);
 
     try {
-      // Prepare checkout data for Google Apps Script
-      const checkoutData = {
-        formType: 'BekkerfineArt',
-        type: 'checkout',
-        customerInfo: formData,
-        items: cartDetail.map(item => ({
-          artworkId: item.item.id,
-          title: item.item.title,
-          price: item.item.price,
-          framing: item.framing,
-          quantity: item.quantity,
-          subtotal: item.subtotal
-        })),
-        total: cartTotal,
-        timestamp: new Date().toISOString()
-      };
+      // Validate required fields
+      if (!formData.name || !formData.email) {
+        alert('Please fill in all required fields');
+        setIsSubmitting(false);
+        return;
+      }
 
-      await fetch('https://script.google.com/macros/s/AKfycbzdEjBW8cpfs8UZmWk195lcI_NX2AJSzc7EVe6T3XaxBN5VH2aXqm-Xe5tr3KVuCXE/exec', {
+      // Create item description
+      const itemNames = cartDetail.map(item => 
+        `${item.item.title}${item.framing ? ` (${item.framing} frame)` : ''}`
+      ).join(', ');
+      
+      // Generate unique payment ID
+      const paymentId = `BFA-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Split name into first and last
+      const nameParts = formData.name.trim().split(' ');
+      const firstName = nameParts[0];
+      const lastName = nameParts.slice(1).join(' ') || firstName;
+
+      // Create PayFast payment
+      const paymentResponse = await fetch('/api/payment', {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(checkoutData)
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email: formData.email,
+          phone: formData.phone,
+          amount: cartTotal.toString(),
+          itemName: cartDetail.length === 1 ? itemNames : `${cartDetail.length} Artworks from Bekker Fine Art`,
+          itemDescription: itemNames,
+          paymentId
+        })
       });
+
+      if (!paymentResponse.ok) {
+        throw new Error('Failed to create payment');
+      }
+
+      const paymentData = await paymentResponse.json();
       
-      // Save purchase inquiry to admin system
+      // Save purchase record to admin system before redirecting
       addContactMessage({
         type: 'purchase_inquiry',
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        message: `Purchase inquiry for ${cartDetail.length} item${cartDetail.length === 1 ? '' : 's'}. ${formData.specialRequests || 'No special requests.'}`,
+        message: `Payment initiated for ${cartDetail.length} item${cartDetail.length === 1 ? '' : 's'}. Payment ID: ${paymentId}. ${formData.specialRequests || 'No special requests.'}`,
         artworkIds: cartDetail.map(item => item.item.id),
         totalAmount: cartTotal,
         deliveryPreference: formData.deliveryPreference,
         specialRequests: formData.specialRequests
       });
       
-      // Add activity for checkout inquiry
+      // Add activity for payment initiation
       addActivity({
-        type: 'contact_received',
-        title: 'Purchase inquiry received',
-        description: `Checkout inquiry from ${formData.name} for ${cartDetail.length} item${cartDetail.length === 1 ? '' : 's'}`,
+        type: 'payment_initiated',
+        title: 'Payment initiated',
+        description: `Payment started by ${formData.name} for R${cartTotal.toLocaleString()}`,
         metadata: { 
-          name: formData.name, 
+          customerName: formData.name, 
           email: formData.email, 
-          total: cartTotal,
+          totalAmount: cartTotal,
+          paymentId,
           itemCount: cartDetail.length 
         }
       });
+
+      // Create form and submit to PayFast
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = paymentData.paymentUrl;
       
-      setIsSubmitting(false);
-      onSubmit();
+      // Add all payment data as hidden fields
+      Object.entries(paymentData.paymentData).forEach(([key, value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = value as string;
+        form.appendChild(input);
+      });
+      
+      document.body.appendChild(form);
+      form.submit();
+
     } catch (error) {
-      console.error('Error submitting checkout form:', error);
+      console.error('Payment initiation error:', error);
+      alert('There was an error processing your payment. Please try again or contact us directly.');
       setIsSubmitting(false);
-      // You might want to show an error message to the user here
-      alert('There was an error submitting your inquiry. Please try again or contact us directly.');
     }
   };
 
@@ -1556,13 +1589,13 @@ function CheckoutForm({
       </div>
 
       <div className="border-t pt-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-          <h5 className="font-semibold text-blue-900 mb-2">What happens next?</h5>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• We&apos;ll review your inquiry and contact you within 24 hours</li>
-            <li>• Discuss payment options and delivery/collection arrangements</li>
-            <li>• Provide final quote including any delivery or framing costs</li>
-            <li>• Arrange secure payment and artwork transfer</li>
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+          <h5 className="font-semibold text-green-900 mb-2">What happens next?</h5>
+          <ul className="text-sm text-green-800 space-y-1">
+            <li>• You&apos;ll be redirected to PayFast for secure payment</li>
+            <li>• Complete payment using card, EFT, or other options</li>
+            <li>• Receive instant confirmation and receipt</li>
+            <li>• Stefan will contact you within 24 hours to arrange delivery</li>
           </ul>
         </div>
         
@@ -1571,11 +1604,11 @@ function CheckoutForm({
           disabled={isSubmitting}
           className="w-full px-6 py-4 bg-neutral-900 text-white rounded-xl hover:bg-neutral-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
         >
-          {isSubmitting ? "Submitting Inquiry..." : "Submit Purchase Inquiry"}
+          {isSubmitting ? "Processing Payment..." : `Pay Now - R${cartTotal.toLocaleString()}`}
         </button>
         
         <p className="text-xs text-neutral-500 text-center mt-3">
-          By submitting this form, you agree to be contacted regarding your artwork inquiry.
+          Secure payment powered by PayFast. You will be redirected to complete your payment.
         </p>
       </div>
     </form>

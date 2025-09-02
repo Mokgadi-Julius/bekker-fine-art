@@ -53,7 +53,7 @@ export type Artwork = typeof INITIAL_ARTWORKS[0] & {
 // Activity tracking system
 export type Activity = {
   id: string;
-  type: 'artwork_added' | 'artwork_updated' | 'artwork_sold' | 'sale_added' | 'contact_received' | 'content_updated';
+  type: 'artwork_added' | 'artwork_updated' | 'artwork_sold' | 'sale_added' | 'contact_received' | 'content_updated' | 'payment_initiated';
   title: string;
   description?: string;
   metadata?: Record<string, unknown>;
