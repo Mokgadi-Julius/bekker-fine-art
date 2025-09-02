@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getArtworks, getArtworksFromAPI, getHeroSlides, getHeroSlidesFromAPI, saveHeroSlidesWithSync, addArtworkWithSync, updateArtworkWithSync, deleteArtworkWithSync, getContent, getContentFromAPI, saveContentWithSync, getSales, updateSale, deleteSale, recordSale, resetSalesDataWithSync, resetArtworksWithSync, getCollage, getCollageFromAPI, saveCollageWithSync, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
+import { getArtworks, getArtworksFromAPI, getHeroSlides, getHeroSlidesFromAPI, saveHeroSlidesWithSync, addArtworkWithSync, updateArtworkWithSync, deleteArtworkWithSync, getContent, getContentFromAPI, saveContentWithSync, getSales, getSalesFromAPI, updateSaleWithSync, deleteSaleWithSync, recordSaleWithSync, resetSalesDataWithSync, resetArtworksWithSync, getCollage, getCollageFromAPI, saveCollageWithSync, getActivities, getTimeAgo, getSettings, getSettingsFromAPI, saveSettingsWithSync, updateSettingWithSync, formatCurrency, formatDate, getContacts, getContactsFromAPI, markContactAsReadWithSync, deleteContactMessageWithSync, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
 import { 
   BarChart3, 
   Image, 
@@ -170,7 +170,16 @@ function Overview({
     };
     
     loadData();
-    setSales(getSales());
+    // Load sales from API first, fallback to localStorage
+    const loadSalesData = async () => {
+      try {
+        const apiSales = await getSalesFromAPI();
+        setSales(apiSales);
+      } catch (error) {
+        setSales(getSales());
+      }
+    };
+    loadSalesData();
     setActivities(getActivities());
     
     // Listen for real-time updates to artworks, sales, and activities
@@ -691,8 +700,20 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
 
   // Load initial data
   useEffect(() => {
-    setSales(getSales());
-    setArtworks(getArtworks());
+    // Load sales from API first, fallback to localStorage
+    const loadData = async () => {
+      try {
+        const apiSales = await getSalesFromAPI();
+        setSales(apiSales);
+        const apiArtworks = await getArtworksFromAPI();
+        setArtworks(apiArtworks);
+      } catch (error) {
+        setSales(getSales());
+        setArtworks(getArtworks());
+      }
+    };
+    
+    loadData();
   }, []);
 
   // Listen for artwork changes
@@ -807,7 +828,7 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
         status: "completed"
       };
 
-      updateSale(editingSale.id, updatedSale);
+      await updateSaleWithSync(editingSale.id, updatedSale);
       setSales(prev => prev.map(s => s.id === editingSale.id ? updatedSale : s));
 
       // Update artwork if needed
@@ -841,7 +862,7 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
         notes: formData.notes
       };
 
-      const newSale = recordSale(saleData);
+      const newSale = await recordSaleWithSync(saleData);
       setSales(prev => [...prev, newSale]);
       
       // Update local artworks state
@@ -860,9 +881,9 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (saleId: string) => {
+  const handleDelete = async (saleId: string) => {
     if (confirm("Are you sure you want to delete this sale record?")) {
-      deleteSale(saleId);
+      await deleteSaleWithSync(saleId);
       setSales(prev => prev.filter(s => s.id !== saleId));
     }
   };
@@ -885,7 +906,7 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
       // Remove corresponding sale record
       const saleToRemove = sales.find(s => s.artworkId === artworkId);
       if (saleToRemove) {
-        deleteSale(saleToRemove.id);
+        await deleteSaleWithSync(saleToRemove.id);
         setSales(prev => prev.filter(s => s.artworkId !== artworkId));
       }
     }
@@ -2045,7 +2066,17 @@ function MessagesManager() {
   const [filter, setFilter] = useState<'all' | 'new' | 'read' | 'archived'>('all');
 
   useEffect(() => {
-    setContacts(getContacts());
+    // Load contacts from API first, fallback to localStorage
+    const loadData = async () => {
+      try {
+        const apiContacts = await getContactsFromAPI();
+        setContacts(apiContacts);
+      } catch (error) {
+        setContacts(getContacts());
+      }
+    };
+    
+    loadData();
     
     // Listen for new contact messages
     const handleContactsChange = (e: StorageEvent) => {
@@ -2076,19 +2107,19 @@ function MessagesManager() {
     return contact.status === filter;
   });
 
-  const handleSelectMessage = (contact: ContactMessage) => {
+  const handleSelectMessage = async (contact: ContactMessage) => {
     setSelectedMessage(contact);
     if (contact.status === 'new') {
-      markContactAsRead(contact.id);
+      await markContactAsReadWithSync(contact.id);
       setContacts(prev => prev.map(c => 
         c.id === contact.id ? { ...c, status: 'read' as const } : c
       ));
     }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this message?')) {
-      deleteContactMessage(id);
+      await deleteContactMessageWithSync(id);
       setContacts(prev => prev.filter(c => c.id !== id));
       if (selectedMessage?.id === id) {
         setSelectedMessage(null);
@@ -2482,7 +2513,17 @@ function SettingsManager() {
   const [saveMessage, setSaveMessage] = useState('');
 
   useEffect(() => {
-    setSettings(getSettings());
+    // Load settings from API first, fallback to localStorage
+    const loadData = async () => {
+      try {
+        const apiSettings = await getSettingsFromAPI();
+        setSettings(apiSettings);
+      } catch (error) {
+        setSettings(getSettings());
+      }
+    };
+    
+    loadData();
     
     // Listen for settings changes
     const handleSettingsChange = (e: StorageEvent) => {
@@ -2514,7 +2555,7 @@ function SettingsManager() {
   ) => {
     setIsSaving(true);
     try {
-      updateSetting(key, value);
+      await updateSettingWithSync(key, value);
       setSettings(prev => ({ ...prev, [key]: value }));
       setSaveMessage('Settings saved successfully!');
       setTimeout(() => setSaveMessage(''), 2000);
@@ -2526,12 +2567,12 @@ function SettingsManager() {
     setIsSaving(false);
   };
 
-  const resetToDefaults = () => {
+  const resetToDefaults = async () => {
     if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
       const defaultSettings = getSettings(); // This will return defaults if no stored settings
       localStorage.removeItem('bekker-settings');
       setSettings(defaultSettings);
-      saveSettings(defaultSettings);
+      await saveSettingsWithSync(defaultSettings);
       setSaveMessage('Settings reset to defaults');
       setTimeout(() => setSaveMessage(''), 2000);
     }

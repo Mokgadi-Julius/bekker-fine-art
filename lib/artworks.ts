@@ -1057,14 +1057,80 @@ export function resetSalesData(): void {
   }
 }
 
-// Add new sale
+// Get sales from API or localStorage fallback
+export async function getSalesFromAPI(): Promise<Sale[]> {
+  try {
+    const response = await fetch('/api/sales');
+    if (response.ok) {
+      const sales = await response.json();
+      // Cache in localStorage for offline access
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SALES_KEY, JSON.stringify(sales));
+      }
+      return sales;
+    }
+  } catch (error) {
+    console.error('Error fetching sales from API:', error);
+  }
+  
+  // Fallback to localStorage
+  return getSales();
+}
+
+// Add new sale (with API sync)
+export async function addSaleWithSync(sale: Sale): Promise<void> {
+  try {
+    // Save to API first
+    const response = await fetch('/api/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sale),
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      addSale(sale);
+    } else {
+      throw new Error('Failed to save to API');
+    }
+  } catch (error) {
+    console.error('Error syncing sale:', error);
+    // Fallback to localStorage only
+    addSale(sale);
+  }
+}
+
+// Add new sale (localStorage only - backwards compatibility)
 export function addSale(sale: Sale): void {
   const sales = getSales();
   const newSales = [...sales, sale];
   saveSales(newSales);
 }
 
-// Update existing sale
+// Update existing sale (with API sync)
+export async function updateSaleWithSync(id: string, updatedSale: Sale): Promise<void> {
+  try {
+    // Save to API first
+    const response = await fetch('/api/sales', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedSale),
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      updateSale(id, updatedSale);
+    } else {
+      throw new Error('Failed to update API');
+    }
+  } catch (error) {
+    console.error('Error syncing sale update:', error);
+    // Fallback to localStorage only
+    updateSale(id, updatedSale);
+  }
+}
+
+// Update existing sale (localStorage only - backwards compatibility)
 export function updateSale(id: string, updatedSale: Sale): void {
   const sales = getSales();
   const newSales = sales.map(sale => 
@@ -1073,7 +1139,28 @@ export function updateSale(id: string, updatedSale: Sale): void {
   saveSales(newSales);
 }
 
-// Delete sale
+// Delete sale (with API sync)
+export async function deleteSaleWithSync(id: string): Promise<void> {
+  try {
+    // Delete from API first
+    const response = await fetch(`/api/sales?id=${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      deleteSale(id);
+    } else {
+      throw new Error('Failed to delete from API');
+    }
+  } catch (error) {
+    console.error('Error syncing sale deletion:', error);
+    // Fallback to localStorage only
+    deleteSale(id);
+  }
+}
+
+// Delete sale (localStorage only - backwards compatibility)
 export function deleteSale(id: string): void {
   const sales = getSales();
   const newSales = sales.filter(sale => sale.id !== id);
@@ -1087,7 +1174,57 @@ function generateSaleId(): string {
   return `sale${timestamp}${random}`;
 }
 
-// Record a sale (combines artwork update and sale creation)
+// Record a sale with API sync (combines artwork update and sale creation)
+export async function recordSaleWithSync(saleData: Omit<Sale, 'id' | 'status'>): Promise<Sale> {
+  const existingSales = getSales();
+  let newId = generateSaleId();
+  
+  // Ensure ID is unique
+  while (existingSales.some(s => s.id === newId)) {
+    newId = generateSaleId();
+  }
+  
+  const sale: Sale = {
+    ...saleData,
+    id: newId,
+    status: "completed"
+  };
+  
+  // Add to sales with sync
+  await addSaleWithSync(sale);
+  
+  // Add activity for sale
+  addActivity({
+    type: 'sale_added',
+    title: 'New sale recorded',
+    description: `Sale of "${saleData.artworkTitle}" for ${new Intl.NumberFormat("en-ZA", {
+      style: "currency",
+      currency: "ZAR",
+      maximumFractionDigits: 0,
+    }).format(saleData.salePrice)}`,
+    metadata: { saleId: sale.id, artworkTitle: saleData.artworkTitle, salePrice: saleData.salePrice }
+  });
+  
+  // Update artwork status with sync
+  const artworks = getArtworks();
+  const artwork = artworks.find(a => a.id === saleData.artworkId);
+  if (artwork) {
+    const updatedArtwork: Artwork = {
+      ...artwork,
+      status: "sold",
+      soldDate: saleData.saleDate,
+      soldPrice: saleData.salePrice,
+      customerName: saleData.customerName,
+      customerEmail: saleData.customerEmail,
+      saleNotes: saleData.notes
+    };
+    await updateArtworkWithSync(artwork.id, updatedArtwork);
+  }
+  
+  return sale;
+}
+
+// Record a sale (combines artwork update and sale creation) - backwards compatibility
 export function recordSale(saleData: Omit<Sale, 'id' | 'status'>): Sale {
   const existingSales = getSales();
   let newId = generateSaleId();
@@ -1135,4 +1272,110 @@ export function recordSale(saleData: Omit<Sale, 'id' | 'status'>): Sale {
   }
   
   return sale;
+}
+
+// Contacts sync functions
+export async function getContactsFromAPI(): Promise<ContactMessage[]> {
+  try {
+    const response = await fetch('/api/contacts');
+    if (response.ok) {
+      const contacts = await response.json();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(CONTACTS_KEY, JSON.stringify(contacts));
+      }
+      return contacts;
+    }
+  } catch (error) {
+    console.error('Error fetching contacts from API:', error);
+  }
+  
+  return getContacts();
+}
+
+export async function markContactAsReadWithSync(id: string): Promise<void> {
+  try {
+    const contacts = getContacts();
+    const contact = contacts.find(c => c.id === id);
+    if (!contact) return;
+    
+    const updatedContact = { ...contact, status: 'read' as const };
+    
+    const response = await fetch('/api/contacts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedContact),
+    });
+    
+    if (response.ok) {
+      markContactAsRead(id);
+    } else {
+      throw new Error('Failed to update API');
+    }
+  } catch (error) {
+    console.error('Error syncing contact status:', error);
+    markContactAsRead(id);
+  }
+}
+
+export async function deleteContactMessageWithSync(id: string): Promise<void> {
+  try {
+    const response = await fetch(`/api/contacts?id=${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (response.ok) {
+      deleteContactMessage(id);
+    } else {
+      throw new Error('Failed to delete from API');
+    }
+  } catch (error) {
+    console.error('Error syncing contact deletion:', error);
+    deleteContactMessage(id);
+  }
+}
+
+// Settings sync functions  
+export async function getSettingsFromAPI(): Promise<AppSettings> {
+  try {
+    const response = await fetch('/api/settings');
+    if (response.ok) {
+      const settings = await response.json();
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      }
+      return settings;
+    }
+  } catch (error) {
+    console.error('Error fetching settings from API:', error);
+  }
+  
+  return getSettings();
+}
+
+export async function saveSettingsWithSync(settings: AppSettings): Promise<void> {
+  try {
+    const response = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    
+    if (response.ok) {
+      saveSettings(settings);
+    } else {
+      throw new Error('Failed to save to API');
+    }
+  } catch (error) {
+    console.error('Error syncing settings:', error);
+    saveSettings(settings);
+  }
+}
+
+export async function updateSettingWithSync<K extends keyof AppSettings>(
+  key: K, 
+  value: AppSettings[K]
+): Promise<void> {
+  const currentSettings = await getSettingsFromAPI();
+  const updatedSettings = { ...currentSettings, [key]: value };
+  await saveSettingsWithSync(updatedSettings);
 }
