@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getArtworks, getArtworksFromAPI, getHeroSlides, getHeroSlidesFromAPI, saveHeroSlidesWithSync, addArtworkWithSync, updateArtworkWithSync, deleteArtworkWithSync, getContent, getContentFromAPI, saveContentWithSync, getSales, getSalesFromAPI, updateSaleWithSync, deleteSaleWithSync, recordSaleWithSync, resetSalesDataWithSync, resetArtworksWithSync, getCollage, getCollageFromAPI, saveCollageWithSync, getActivities, getTimeAgo, getSettings, getSettingsFromAPI, saveSettingsWithSync, updateSettingWithSync, formatCurrency, formatDate, getContacts, getContactsFromAPI, markContactAsReadWithSync, deleteContactMessageWithSync, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
+import { getArtworks, getArtworksFromAPI, getHeroSlides, getHeroSlidesFromAPI, saveHeroSlidesWithSync, addArtworkWithSync, updateArtworkWithSync, deleteArtworkWithSync, getContent, getContentFromAPI, saveContentWithSync, getSales, getSalesFromAPI, updateSaleWithSync, deleteSaleWithSync, recordSaleWithSync, resetSalesDataWithSync, resetArtworksWithSync, getCollage, getCollageFromAPI, saveCollageWithSync, getActivities, getTimeAgo, getSettings, getSettingsFromAPI, updateSettingWithSync, formatCurrency, formatDate, getContacts, getContactsFromAPI, markContactAsReadWithSync, deleteContactMessageWithSync, updateContactMessageWithSync, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
 import { 
   BarChart3, 
   Image, 
@@ -925,8 +925,10 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
               if (confirm("Reset sales data to fix duplicates? This will restore the original sample data across ALL browsers.")) {
                 try {
                   await resetSalesDataWithSync();
-                  setSales(getSales());
-                  setArtworks(getArtworks());
+                  const freshSales = await getSalesFromAPI();
+                  setSales(freshSales);
+                  const freshArtworks = await getArtworksFromAPI();
+                  setArtworks(freshArtworks);
                 } catch (error) {
                   console.error('Error syncing sales reset:', error);
                   alert('Reset completed locally. Other browsers will sync when they refresh.');
@@ -2127,8 +2129,8 @@ function MessagesManager() {
     }
   };
 
-  const handleArchive = (id: string) => {
-    updateContactMessage(id, { status: 'archived' });
+  const handleArchive = async (id: string) => {
+    await updateContactMessageWithSync(id, { status: 'archived' });
     setContacts(prev => prev.map(c => 
       c.id === id ? { ...c, status: 'archived' as const } : c
     ));
@@ -2569,10 +2571,14 @@ function SettingsManager() {
 
   const resetToDefaults = async () => {
     if (confirm('Are you sure you want to reset all settings to defaults? This cannot be undone.')) {
-      const defaultSettings = getSettings(); // This will return defaults if no stored settings
-      localStorage.removeItem('bekker-settings');
-      setSettings(defaultSettings);
-      await saveSettingsWithSync(defaultSettings);
+      // Reset via API first, then load fresh defaults
+      const response = await fetch('/api/settings', { method: 'POST' });
+      if (response.ok) {
+        const defaultSettings = await getSettingsFromAPI();
+        setSettings(defaultSettings);
+      } else {
+        throw new Error('Failed to reset via API');
+      }
       setSaveMessage('Settings reset to defaults');
       setTimeout(() => setSaveMessage(''), 2000);
     }

@@ -1379,3 +1379,29 @@ export async function updateSettingWithSync<K extends keyof AppSettings>(
   const updatedSettings = { ...currentSettings, [key]: value };
   await saveSettingsWithSync(updatedSettings);
 }
+
+// Update contact message (with API sync)
+export async function updateContactMessageWithSync(id: string, updates: Partial<ContactMessage>): Promise<void> {
+  try {
+    const contacts = getContacts();
+    const contact = contacts.find(c => c.id === id);
+    if (!contact) return;
+    
+    const updatedContact = { ...contact, ...updates };
+    
+    const response = await fetch('/api/contacts', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedContact),
+    });
+    
+    if (response.ok) {
+      updateContactMessage(id, updates);
+    } else {
+      throw new Error('Failed to update API');
+    }
+  } catch (error) {
+    console.error('Error syncing contact message update:', error);
+    updateContactMessage(id, updates);
+  }
+}
