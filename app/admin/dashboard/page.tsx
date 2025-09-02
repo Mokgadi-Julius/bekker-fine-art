@@ -425,7 +425,7 @@ function HeroSliderManager() {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this slide?")) {
       const newSlides = slides.filter(s => s.id !== id);
       setSlides(newSlides);
