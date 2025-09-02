@@ -532,6 +532,28 @@ export function updateArtwork(id: string, updatedArtwork: Artwork): void {
 }
 
 // Delete artwork
+// Delete artwork (with API sync)
+export async function deleteArtworkWithSync(id: string): Promise<void> {
+  try {
+    // Delete from API first
+    const response = await fetch(`/api/artworks?id=${id}`, {
+      method: 'DELETE',
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      deleteArtwork(id);
+    } else {
+      throw new Error('Failed to delete from API');
+    }
+  } catch (error) {
+    console.error('Error syncing artwork deletion:', error);
+    // Fallback to localStorage only
+    deleteArtwork(id);
+  }
+}
+
+// Delete artwork (localStorage only - for backwards compatibility)
 export function deleteArtwork(id: string): void {
   const artworks = getArtworks();
   const newArtworks = artworks.filter(artwork => artwork.id !== id);
@@ -819,7 +841,50 @@ export function getCollage(): Collage {
   return INITIAL_COLLAGE;
 }
 
-// Save collage to localStorage
+// Get collage from API or localStorage fallback
+export async function getCollageFromAPI(): Promise<Collage> {
+  try {
+    const response = await fetch('/api/collage');
+    if (response.ok) {
+      const collage = await response.json();
+      // Cache in localStorage for offline access
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(COLLAGE_KEY, JSON.stringify(collage));
+      }
+      return collage;
+    }
+  } catch (error) {
+    console.error('Error fetching collage from API:', error);
+  }
+  
+  // Fallback to localStorage
+  return getCollage();
+}
+
+// Save collage with API sync
+export async function saveCollageWithSync(collage: Collage): Promise<void> {
+  try {
+    // Save to API first
+    const response = await fetch('/api/collage', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(collage),
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      saveCollage(collage);
+    } else {
+      throw new Error('Failed to save to API');
+    }
+  } catch (error) {
+    console.error('Error syncing collage:', error);
+    // Fallback to localStorage only
+    saveCollage(collage);
+  }
+}
+
+// Save collage to localStorage (backwards compatibility)
 export function saveCollage(collage: Collage): void {
   if (typeof window === 'undefined') return;
   

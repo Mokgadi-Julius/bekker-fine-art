@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getArtworks, getArtworksFromAPI, getHeroSlides, getHeroSlidesFromAPI, saveHeroSlides, saveHeroSlidesWithSync, addArtwork, addArtworkWithSync, updateArtwork, updateArtworkWithSync, deleteArtwork, getContent, getContentFromAPI, saveContent, saveContentWithSync, getSales, addSale, updateSale, deleteSale, recordSale, resetSalesData, resetSalesDataWithSync, resetArtworks, resetArtworksWithSync, getCollage, saveCollage, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
+import { getArtworks, getArtworksFromAPI, getHeroSlides, getHeroSlidesFromAPI, saveHeroSlidesWithSync, addArtworkWithSync, updateArtworkWithSync, deleteArtworkWithSync, getContent, getContentFromAPI, saveContentWithSync, getSales, updateSale, deleteSale, recordSale, resetSalesDataWithSync, resetArtworksWithSync, getCollage, getCollageFromAPI, saveCollageWithSync, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
 import { 
   BarChart3, 
   Image, 
@@ -20,16 +20,10 @@ import {
   Moon,
   Sun,
   Monitor,
-  Bell,
-  Eye,
-  EyeOff,
   Download,
   RefreshCw,
   Zap,
   DollarSign,
-  Calendar,
-  ToggleLeft,
-  ToggleRight,
   Sliders,
   Phone,
   Menu
@@ -355,7 +349,17 @@ function HeroSliderManager() {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
 
   useEffect(() => {
-    setSlides(getHeroSlides());
+    // Load from API first, fallback to localStorage
+    const loadData = async () => {
+      try {
+        const apiSlides = await getHeroSlidesFromAPI();
+        setSlides(apiSlides);
+      } catch (error) {
+        setSlides(getHeroSlides());
+      }
+    };
+    
+    loadData();
   }, []);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSlide, setEditingSlide] = useState<HeroSlide | null>(null);
@@ -1284,7 +1288,17 @@ function ContentEditor() {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    setContent(getContent());
+    // Load from API first, fallback to localStorage
+    const loadData = async () => {
+      try {
+        const apiContent = await getContentFromAPI();
+        setContent(apiContent);
+      } catch (error) {
+        setContent(getContent());
+      }
+    };
+    
+    loadData();
   }, []);
 
   const handleSave = async () => {
@@ -1731,7 +1745,17 @@ function ArtworksManager({ quickAction }: { quickAction?: string | null }) {
   const [artworks, setArtworks] = useState<Artwork[]>([]);
 
   useEffect(() => {
-    setArtworks(getArtworks());
+    // Load from API first, fallback to localStorage
+    const loadData = async () => {
+      try {
+        const apiArtworks = await getArtworksFromAPI();
+        setArtworks(apiArtworks);
+      } catch (error) {
+        setArtworks(getArtworks());
+      }
+    };
+    
+    loadData();
   }, []);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -1804,9 +1828,9 @@ function ArtworksManager({ quickAction }: { quickAction?: string | null }) {
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this artwork?")) {
-      deleteArtwork(id);
+      await deleteArtworkWithSync(id);
       setArtworks(prev => prev.filter(a => a.id !== id));
     }
   };
@@ -2297,12 +2321,22 @@ function CollageManager() {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    setCollage(getCollage());
+    // Load from API first, fallback to localStorage
+    const loadData = async () => {
+      try {
+        const apiCollage = await getCollageFromAPI();
+        setCollage(apiCollage);
+      } catch (error) {
+        setCollage(getCollage());
+      }
+    };
+    
+    loadData();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     try {
-      saveCollage(collage);
+      await saveCollageWithSync(collage);
       setHasChanges(false);
       alert("Collage updated successfully!");
     } catch (error) {
