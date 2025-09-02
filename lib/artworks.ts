@@ -380,7 +380,27 @@ export function getTimeAgo(timestamp: string): string {
   return date.toLocaleDateString();
 }
 
-// Get artworks from localStorage or return defaults
+// Get artworks from API or localStorage fallback
+export async function getArtworksFromAPI(): Promise<Artwork[]> {
+  try {
+    const response = await fetch('/api/artworks');
+    if (response.ok) {
+      const artworks = await response.json();
+      // Cache in localStorage for offline access
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(ARTWORKS_KEY, JSON.stringify(artworks));
+      }
+      return artworks;
+    }
+  } catch (error) {
+    console.error('Error fetching artworks from API:', error);
+  }
+  
+  // Fallback to localStorage
+  return getArtworks();
+}
+
+// Get artworks from localStorage or return defaults (synchronous fallback)
 export function getArtworks(): Artwork[] {
   if (typeof window === 'undefined') return INITIAL_ARTWORKS;
   
@@ -412,7 +432,40 @@ export function saveArtworks(artworks: Artwork[]): void {
   }
 }
 
-// Add new artwork
+// Add new artwork (with API sync)
+export async function addArtworkWithSync(artwork: Artwork): Promise<void> {
+  try {
+    // Save to API first
+    const response = await fetch('/api/artworks', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(artwork),
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      const artworks = getArtworks();
+      const newArtworks = [...artworks, artwork];
+      saveArtworks(newArtworks);
+    } else {
+      throw new Error('Failed to save to API');
+    }
+  } catch (error) {
+    console.error('Error syncing artwork:', error);
+    // Fallback to localStorage only
+    addArtwork(artwork);
+  }
+  
+  // Add activity
+  addActivity({
+    type: 'artwork_added',
+    title: 'New artwork added',
+    description: `"${artwork.title}" has been added to the gallery`,
+    metadata: { artworkId: artwork.id, artworkTitle: artwork.title }
+  });
+}
+
+// Add new artwork (localStorage only - for backwards compatibility)
 export function addArtwork(artwork: Artwork): void {
   const artworks = getArtworks();
   const newArtworks = [...artworks, artwork];
@@ -427,7 +480,30 @@ export function addArtwork(artwork: Artwork): void {
   });
 }
 
-// Update existing artwork
+// Update existing artwork (with API sync)
+export async function updateArtworkWithSync(id: string, updatedArtwork: Artwork): Promise<void> {
+  try {
+    // Save to API first
+    const response = await fetch('/api/artworks', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedArtwork),
+    });
+    
+    if (response.ok) {
+      // Update localStorage
+      updateArtwork(id, updatedArtwork);
+    } else {
+      throw new Error('Failed to update API');
+    }
+  } catch (error) {
+    console.error('Error syncing artwork update:', error);
+    // Fallback to localStorage only
+    updateArtwork(id, updatedArtwork);
+  }
+}
+
+// Update existing artwork (localStorage only - for backwards compatibility)
 export function updateArtwork(id: string, updatedArtwork: Artwork): void {
   const artworks = getArtworks();
   const oldArtwork = artworks.find(a => a.id === id);
@@ -462,7 +538,39 @@ export function deleteArtwork(id: string): void {
   saveArtworks(newArtworks);
 }
 
-// Reset artworks to initial state (fix corrupted data)
+// Reset artworks to initial state (fix corrupted data) - with API sync
+export async function resetArtworksWithSync(): Promise<void> {
+  try {
+    // Reset via API first
+    const response = await fetch('/api/artworks/reset', {
+      method: 'POST',
+    });
+    
+    if (response.ok) {
+      // Clear localStorage and reload from API
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(ARTWORKS_KEY);
+      }
+      
+      // Get fresh data from API
+      await getArtworksFromAPI();
+    } else {
+      throw new Error('Failed to reset via API');
+    }
+  } catch (error) {
+    console.error('Error resetting via API, falling back to localStorage:', error);
+    // Fallback to localStorage reset
+    resetArtworks();
+  }
+  
+  addActivity({
+    type: 'content_updated',
+    title: 'Artworks reset',
+    description: 'Artwork data has been reset to clean initial state across all browsers'
+  });
+}
+
+// Reset artworks to initial state (localStorage only - for backwards compatibility)
 export function resetArtworks(): void {
   if (typeof window === 'undefined') return;
   

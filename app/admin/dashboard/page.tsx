@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getArtworks, getHeroSlides, saveHeroSlides, addArtwork, updateArtwork, deleteArtwork, getContent, saveContent, getSales, addSale, updateSale, deleteSale, recordSale, resetSalesData, resetArtworks, getCollage, saveCollage, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
+import { getArtworks, getArtworksFromAPI, getHeroSlides, saveHeroSlides, addArtwork, addArtworkWithSync, updateArtwork, updateArtworkWithSync, deleteArtwork, getContent, saveContent, getSales, addSale, updateSale, deleteSale, recordSale, resetSalesData, resetArtworks, resetArtworksWithSync, getCollage, saveCollage, getActivities, getTimeAgo, getSettings, saveSettings, updateSetting, formatCurrency, formatDate, getContacts, markContactAsRead, deleteContactMessage, updateContactMessage, type Artwork, type HeroSlide, type Content, type Sale, type Collage, type Activity, type AppSettings, type ContactMessage } from "../../../lib/artworks";
 import { 
   BarChart3, 
   Image, 
@@ -165,7 +165,17 @@ function Overview({
   const [activities, setActivities] = useState<Activity[]>([]);
 
   useEffect(() => {
-    setArtworks(getArtworks());
+    // Load from API first, fallback to localStorage
+    const loadData = async () => {
+      try {
+        const apiArtworks = await getArtworksFromAPI();
+        setArtworks(apiArtworks);
+      } catch (error) {
+        setArtworks(getArtworks());
+      }
+    };
+    
+    loadData();
     setSales(getSales());
     setActivities(getActivities());
     
@@ -898,17 +908,23 @@ function SalesManager({ quickAction }: { quickAction?: string | null }) {
             Reset Sales Data
           </button>
           <button
-            onClick={() => {
-              if (confirm("Reset artworks to fix corrupted images? This will restore clean artwork data with proper images.")) {
-                resetArtworks();
-                setArtworks(getArtworks());
-                // Force refresh the page to clear any cached image issues
-                window.location.reload();
+            onClick={async () => {
+              if (confirm("Reset artworks to fix corrupted images? This will restore clean artwork data across ALL browsers.")) {
+                try {
+                  await resetArtworksWithSync();
+                  const freshArtworks = await getArtworksFromAPI();
+                  setArtworks(freshArtworks);
+                  // Force refresh the page to clear any cached image issues
+                  window.location.reload();
+                } catch (error) {
+                  console.error('Error syncing reset:', error);
+                  alert('Reset completed locally. Other browsers will sync when they refresh.');
+                }
               }
             }}
             className="px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 text-sm"
           >
-            Fix Images
+            Fix Images (All Browsers)
           </button>
           <button
             onClick={() => openModal()}

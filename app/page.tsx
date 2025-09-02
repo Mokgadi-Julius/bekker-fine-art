@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { ShoppingCart, Menu, X, Search, Phone, Mail, Instagram, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getArtworks, getHeroSlides, getContent, getCollage, addActivity, addContactMessage, formatCurrency, type Artwork, type HeroSlide, type Content, type Collage } from "../lib/artworks";
+import { getArtworks, getArtworksFromAPI, getHeroSlides, getContent, getCollage, addActivity, addContactMessage, formatCurrency, type Artwork, type HeroSlide, type Content, type Collage } from "../lib/artworks";
 
 // -------------------------------------------------------------
 // Bekker Fine Art — Single-file React page for Next.js (app/page.tsx)
@@ -966,7 +966,17 @@ export default function BekkerFineArtPage() {
 
   // Load artworks and cart from localStorage on component mount
   useEffect(() => {
-    setArtworks(getArtworks());
+    // Load from API first, fallback to localStorage
+    const loadArtworks = async () => {
+      try {
+        const apiArtworks = await getArtworksFromAPI();
+        setArtworks(apiArtworks);
+      } catch (error) {
+        setArtworks(getArtworks());
+      }
+    };
+    
+    loadArtworks();
     
     const savedCart = localStorage.getItem('bekker-cart');
     if (savedCart) {
