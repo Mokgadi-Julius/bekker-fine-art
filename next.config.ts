@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
+  // Remove 'output: export' for Railway deployment to enable server-side features
   trailingSlash: true,
   images: {
     unoptimized: true
