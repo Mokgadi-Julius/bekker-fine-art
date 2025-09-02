@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { ShoppingCart, Menu, X, Search, Phone, Mail, Instagram, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getArtworks, getArtworksFromAPI, getHeroSlides, getContent, getCollage, addActivity, addContactMessage, formatCurrency, type Artwork, type HeroSlide, type Content, type Collage } from "../lib/artworks";
+import { getArtworks, getArtworksFromAPI, getHeroSlides, getHeroSlidesFromAPI, getContent, getContentFromAPI, getCollage, getCollageFromAPI, addActivity, addContactMessage, formatCurrency, type Artwork, type HeroSlide, type Content, type Collage } from "../lib/artworks";
 
 // -------------------------------------------------------------
 // Bekker Fine Art — Single-file React page for Next.js (app/page.tsx)
@@ -126,8 +126,16 @@ function Slideshow() {
   const [heroSlides, setHeroSlides] = useState<HeroSlide[]>([]);
 
   useEffect(() => {
-    // Initial load
-    setHeroSlides(getHeroSlides());
+    // Initial load from API first, fallback to localStorage
+    const loadHeroSlides = async () => {
+      try {
+        const apiSlides = await getHeroSlidesFromAPI();
+        setHeroSlides(apiSlides);
+      } catch (error) {
+        setHeroSlides(getHeroSlides());
+      }
+    };
+    loadHeroSlides();
     
     // Listen for hero slide updates from admin panel
     const handleStorageChange = (e: StorageEvent) => {
@@ -141,8 +149,13 @@ function Slideshow() {
     };
     
     // Also listen for a custom event for same-tab updates
-    const handleCustomUpdate = () => {
-      setHeroSlides(getHeroSlides());
+    const handleCustomUpdate = async () => {
+      try {
+        const apiSlides = await getHeroSlidesFromAPI();
+        setHeroSlides(apiSlides);
+      } catch (error) {
+        setHeroSlides(getHeroSlides());
+      }
     };
     
     window.addEventListener('storage', handleStorageChange);
@@ -250,8 +263,16 @@ function Collage() {
   const [collage, setCollage] = useState<Collage | null>(null);
 
   useEffect(() => {
-    // Only load content on client side to avoid hydration mismatch
-    setCollage(getCollage());
+    // Load collage from API first, fallback to localStorage
+    const loadCollage = async () => {
+      try {
+        const apiCollage = await getCollageFromAPI();
+        setCollage(apiCollage);
+      } catch (error) {
+        setCollage(getCollage());
+      }
+    };
+    loadCollage();
     
     // Listen for collage updates from admin panel
     const handleStorageChange = (e: StorageEvent) => {
@@ -265,8 +286,13 @@ function Collage() {
     };
     
     // Also listen for a custom event for same-tab updates
-    const handleCustomUpdate = () => {
-      setCollage(getCollage());
+    const handleCustomUpdate = async () => {
+      try {
+        const apiCollage = await getCollageFromAPI();
+        setCollage(apiCollage);
+      } catch (error) {
+        setCollage(getCollage());
+      }
     };
     
     window.addEventListener('storage', handleStorageChange);
@@ -503,7 +529,16 @@ function Gallery({
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    setContent(getContent());
+    // Load content from API first, fallback to localStorage
+    const loadContent = async () => {
+      try {
+        const apiContent = await getContentFromAPI();
+        setContent(apiContent);
+      } catch (error) {
+        setContent(getContent());
+      }
+    };
+    loadContent();
     
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'bekker-content' && e.newValue) {
@@ -580,8 +615,16 @@ function About() {
   const [content, setContent] = useState<Content | null>(null);
 
   useEffect(() => {
-    // Only load content on client side to avoid hydration mismatch
-    setContent(getContent());
+    // Load content from API first, fallback to localStorage
+    const loadContent = async () => {
+      try {
+        const apiContent = await getContentFromAPI();
+        setContent(apiContent);
+      } catch (error) {
+        setContent(getContent());
+      }
+    };
+    loadContent();
     
     // Listen for content updates from admin panel
     const handleStorageChange = (e: StorageEvent) => {
@@ -715,8 +758,16 @@ function Contact() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
-    // Only load content on client side to avoid hydration mismatch
-    setContent(getContent());
+    // Load content from API first, fallback to localStorage
+    const loadContent = async () => {
+      try {
+        const apiContent = await getContentFromAPI();
+        setContent(apiContent);
+      } catch (error) {
+        setContent(getContent());
+      }
+    };
+    loadContent();
     
     // Listen for content updates from admin panel
     const handleStorageChange = (e: StorageEvent) => {
