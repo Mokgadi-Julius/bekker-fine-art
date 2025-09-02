@@ -1,0 +1,9 @@
+# Railway deployment ignore file
+.firebase/
+firebase.json
+.firebaserc
+
+# Development files
+.next/
+.turbo/
+node_modules/
