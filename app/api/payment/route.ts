@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
 // PayFast credentials
-const PAYFAST_MERCHANT_ID = '12447061';
-const PAYFAST_MERCHANT_KEY = 'om3shtjbl6dus';
-const PAYFAST_PASSPHRASE = ''; // Leave empty if not set
+const PAYFAST_MERCHANT_ID = '10041693';
+const PAYFAST_MERCHANT_KEY = '83zgharv5v4ou';
+const PAYFAST_PASSPHRASE = 'writenowagency123';
 const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process'; // Use https://www.payfast.co.za/eng/process for production
 
 interface PayFastData {
