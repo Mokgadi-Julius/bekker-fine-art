@@ -27,26 +27,33 @@ interface PayFastData {
 }
 
 function generateSignature(data: PayFastData, passPhrase: string = ''): string {
-  // PayFast FORM signature - follows documentation exactly
+  // PayFast form signature generation - EXACT implementation from documentation
+  // "Variable order: The pairs must be listed in the order in which they appear in the attributes description"
+  
   let paramString = '';
   
-  // Create parameter string with ALL values (including empty ones for form submission)
-  Object.keys(data).forEach(key => {
-    const value = data[key as keyof PayFastData] as string;
-    
-    // Skip signature field only
-    if (key !== 'signature') {
-      const stringValue = value || ''; // Include empty values
-      // URL encode with proper format - trim first, then encode
-      const encodedValue = encodeURIComponent(stringValue.toString().trim());
+  // Build parameter string with only NON-EMPTY values, in specific order
+  const fieldOrder = [
+    'merchant_id', 'merchant_key', 'return_url', 'cancel_url', 'notify_url',
+    'name_first', 'name_last', 'email_address', 'cell_number', 
+    'm_payment_id', 'amount', 'item_name', 'item_description'
+  ];
+  
+  for (const key of fieldOrder) {
+    const value = data[key as keyof PayFastData];
+    // Only include non-empty values as per PayFast documentation
+    if (value && value.toString().trim() !== '') {
+      const trimmedValue = value.toString().trim();
+      // URL encode the value - PayFast docs show urlencode() usage
+      const encodedValue = encodeURIComponent(trimmedValue);
       paramString += `${key}=${encodedValue}&`;
     }
-  });
+  }
   
   // Remove trailing &
   paramString = paramString.slice(0, -1);
   
-  // Add passphrase - DO NOT URL encode
+  // Add passphrase if provided - DO NOT URL encode the passphrase
   if (passPhrase && passPhrase.trim() !== '') {
     paramString += `&passphrase=${passPhrase.trim()}`;
   }
