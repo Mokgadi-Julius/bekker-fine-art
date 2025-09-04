@@ -105,10 +105,20 @@ export async function POST(request: NextRequest) {
     // Only add cell_number if it exists and is not empty
     // Clean phone number: remove spaces, country codes, and special characters
     if (phone && phone.trim() !== '') {
-      const cleanedPhone = phone.trim()
-        .replace(/^\+27\s*/, '0') // Replace +27 with 0
-        .replace(/\s+/g, '')      // Remove all spaces
-        .replace(/[^0-9]/g, '');  // Remove non-numeric characters
+      let cleanedPhone = phone.trim();
+      
+      // Debug log
+      console.log('Original phone:', cleanedPhone);
+      
+      // Replace +27 with 0
+      if (cleanedPhone.startsWith('+27')) {
+        cleanedPhone = '0' + cleanedPhone.substring(3);
+      }
+      
+      // Remove all spaces and non-numeric characters
+      cleanedPhone = cleanedPhone.replace(/\s+/g, '').replace(/[^0-9]/g, '');
+      
+      console.log('Cleaned phone:', cleanedPhone);
       
       if (cleanedPhone.length >= 10) {
         paymentData.cell_number = cleanedPhone;
