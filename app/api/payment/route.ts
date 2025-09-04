@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// PayFast credentials - LIVE credentials
-const PAYFAST_MERCHANT_ID = '12447061';
-const PAYFAST_MERCHANT_KEY = 'om3shtjbl6dus';
-const PAYFAST_PASSPHRASE = 'Writenowagency123';
-const PAYFAST_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://www.payfast.co.za/eng/process'
-  : 'https://sandbox.payfast.co.za/eng/process';
+// PayFast SANDBOX credentials for testing
+const PAYFAST_MERCHANT_ID = '10000100';
+const PAYFAST_MERCHANT_KEY = '46f0cd694581a';
+const PAYFAST_PASSPHRASE = 'jt7NOE43FZPn';
+// Force sandbox for testing - change to production when ready
+const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process';
+// const PAYFAST_URL = 'https://www.payfast.co.za/eng/process'; // Production
 
 interface PayFastData {
   merchant_id: string;
