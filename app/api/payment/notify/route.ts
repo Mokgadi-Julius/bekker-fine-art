@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// PayFast credentials
-const PAYFAST_MERCHANT_ID = '10041693';
-const PAYFAST_MERCHANT_KEY = '83zgharv5v4ou';
-const PAYFAST_PASSPHRASE = 'writenowagency123';
+// PayFast credentials - LIVE credentials
+const PAYFAST_MERCHANT_ID = '12447061';
+const PAYFAST_MERCHANT_KEY = 'om3shtjbl6dus';
+const PAYFAST_PASSPHRASE = 'Writenowagency123';
 
 function generateSignature(data: Record<string, string>, passPhrase: string = ''): string {
   // Create parameter string
