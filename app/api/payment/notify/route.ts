@@ -1,34 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// PayFast credentials - LIVE credentials
-const PAYFAST_MERCHANT_ID = '12447061';
-const PAYFAST_MERCHANT_KEY = 'om3shtjbl6dus';
-const PAYFAST_PASSPHRASE = 'Writenowagency123';
+// PayFast configuration from environment variables - must match payment route
+const PAYFAST_MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID || '10041723';
+const PAYFAST_MERCHANT_KEY = process.env.PAYFAST_MERCHANT_KEY || 'zfpjj502dmh8o';
+const PAYFAST_PASSPHRASE = process.env.PAYFAST_PASSPHRASE || 'writenowagency123';
 
 function generateSignature(data: Record<string, string>, passPhrase: string = ''): string {
-  // Create parameter string
+  // PayFast signature generation - must match exact algorithm
   let paramString = '';
+  
+  // PayFast expects fields in alphabetical order for ITN signature verification
   const sortedKeys = Object.keys(data).sort();
   
   for (const key of sortedKeys) {
     const value = data[key];
     // Only include non-empty values and exclude signature field
-    if (key !== 'signature' && value && value.trim() !== '') {
-      paramString += `${key}=${encodeURIComponent(value)}&`;
+    if (key !== 'signature' && value && value.toString().trim() !== '') {
+      const trimmedValue = value.toString().trim();
+      // URL encode the value
+      const encodedValue = encodeURIComponent(trimmedValue);
+      paramString += `${key}=${encodedValue}&`;
     }
   }
   
   // Remove trailing &
   paramString = paramString.slice(0, -1);
   
-  // Add passphrase if provided (DO NOT URL encode the passphrase)
+  // Add passphrase if provided - DO NOT URL encode the passphrase
   if (passPhrase && passPhrase.trim() !== '') {
-    paramString += `&passphrase=${passPhrase}`;
+    paramString += `&passphrase=${passPhrase.trim()}`;
   }
   
-  // Generate MD5 signature
-  return crypto.createHash('md5').update(paramString).digest('hex');
+  console.log('ITN signature string:', paramString);
+  
+  // Generate MD5 signature in lowercase
+  const signature = crypto.createHash('md5').update(paramString).digest('hex');
+  console.log('ITN calculated signature:', signature);
+  
+  return signature;
 }
 
 export async function POST(request: NextRequest) {

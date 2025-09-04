@@ -1113,8 +1113,11 @@ export default function BekkerFineArtPage() {
     localStorage.removeItem('bekker-cart');
   }
 
-  const cartDetail = cart.map((c) => {
-    const item = artworks.find((a) => a.id === c.id)!;
+  const cartDetail = cart.filter((c) => {
+    // Filter out cart items that don't have corresponding artworks
+    return artworks.find((a) => a.id === c.id) !== undefined;
+  }).map((c) => {
+    const item = artworks.find((a) => a.id === c.id)!; // Safe to use ! since we filtered above
     const framingCost = c.framing ? FRAMING_PRICE : 0;
     const itemTotal = (item.price + framingCost) * c.quantity;
     return { ...c, item, subtotal: itemTotal };
@@ -1382,7 +1385,8 @@ function CheckoutForm({
           amount: cartTotal.toString(),
           itemName: cartDetail.length === 1 ? itemNames : `${cartDetail.length} Artworks from Bekker Fine Art`,
           itemDescription: itemNames,
-          paymentId
+          paymentId,
+          cartItems: cartDetail // Send detailed cart breakdown for tracking
         })
       });
 

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// Use SANDBOX credentials first to test signature generation
-const PAYFAST_MERCHANT_ID = '10000100';
-const PAYFAST_MERCHANT_KEY = '46f0cd694581a';
-const PAYFAST_PASSPHRASE = 'jt7NOE43FZPn';
-const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process'; // Sandbox testing
+// PayFast configuration from environment variables
+const PAYFAST_MERCHANT_ID = process.env.PAYFAST_MERCHANT_ID || '10041723';
+const PAYFAST_MERCHANT_KEY = process.env.PAYFAST_MERCHANT_KEY || 'zfpjj502dmh8o';
+const PAYFAST_PASSPHRASE = process.env.PAYFAST_PASSPHRASE || 'writenowagency123';
+const PAYFAST_URL = process.env.PAYFAST_URL || 'https://sandbox.payfast.co.za/eng/process';
 
 interface PayFastData {
   merchant_id: string;
@@ -25,36 +25,41 @@ interface PayFastData {
 }
 
 function generateSignature(data: PayFastData, passPhrase: string = ''): string {
-  // PayFast form signature generation - EXACT implementation from documentation
-  // "Variable order: The pairs must be listed in the order in which they appear in the attributes description"
+  // PayFast form signature generation - use alphabetical order for form submissions
+  // Based on PayFast documentation and community best practices
   
   let paramString = '';
   
-  // Build parameter string with only NON-EMPTY values, in specific order
-  const fieldOrder = [
-    'merchant_id', 'merchant_key', 'return_url', 'cancel_url', 'notify_url',
-    'name_first', 'name_last', 'email_address', 'cell_number', 
-    'm_payment_id', 'amount', 'item_name', 'item_description'
-  ];
+  // Create copy of data to avoid modifying original
+  const signatureData: Record<string, string> = {};
   
-  for (const key of fieldOrder) {
+  // Add all non-empty values to signature data
+  Object.keys(data).forEach(key => {
     const value = data[key as keyof PayFastData];
-    // Only include non-empty values as per PayFast documentation
     if (value && value.toString().trim() !== '') {
-      const trimmedValue = value.toString().trim();
-      // URL encode the value - PayFast docs show urlencode() usage
-      const encodedValue = encodeURIComponent(trimmedValue);
+      signatureData[key] = value.toString().trim();
+    }
+  });
+  
+  // Add passphrase if provided (include in alphabetical sort)
+  if (passPhrase && passPhrase.trim() !== '') {
+    signatureData['passphrase'] = passPhrase.trim();
+  }
+  
+  // Sort keys alphabetically and build parameter string
+  const sortedKeys = Object.keys(signatureData).sort();
+  
+  for (const key of sortedKeys) {
+    if (key !== 'signature') { // Exclude signature itself
+      const value = signatureData[key];
+      // URL encode and replace %20 with + for spaces (PayFast requirement)
+      const encodedValue = encodeURIComponent(value).replace(/%20/g, '+');
       paramString += `${key}=${encodedValue}&`;
     }
   }
   
   // Remove trailing &
   paramString = paramString.slice(0, -1);
-  
-  // Add passphrase if provided - DO NOT URL encode the passphrase
-  if (passPhrase && passPhrase.trim() !== '') {
-    paramString += `&passphrase=${passPhrase.trim()}`;
-  }
   
   console.log('PayFast signature string:', paramString);
   
@@ -63,6 +68,17 @@ function generateSignature(data: PayFastData, passPhrase: string = ''): string {
   console.log('PayFast generated signature:', signature);
   
   return signature;
+}
+
+// Helper function to sanitize text for PayFast
+function sanitizeForPayFast(text: string): string {
+  return text
+    .replace(/[()[\]{}]/g, '') // Remove brackets and parentheses
+    .replace(/['"]/g, '') // Remove quotes
+    .replace(/&/g, 'and') // Replace & with 'and'
+    .replace(/[^\w\s-]/g, '') // Remove other special characters except hyphens
+    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    .trim();
 }
 
 export async function POST(request: NextRequest) {
@@ -76,7 +92,8 @@ export async function POST(request: NextRequest) {
       amount,
       itemName,
       itemDescription,
-      paymentId
+      paymentId,
+      cartItems // Optional: detailed cart breakdown for logging/tracking
     } = body;
 
     // Validate required fields
@@ -87,8 +104,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get base URL for return URLs
-    const baseUrl = request.headers.get('origin') || 'https://bekker-fine-art-production.up.railway.app';
+    // Sanitize item name and description for PayFast compatibility
+    const sanitizedItemName = sanitizeForPayFast(itemName);
+    const sanitizedItemDescription = sanitizeForPayFast(itemDescription || itemName);
+
+    // Log detailed cart information if provided (for debugging/tracking)
+    if (cartItems && Array.isArray(cartItems)) {
+      console.log('PayFast payment cart details:', {
+        paymentId,
+        totalItems: cartItems.length,
+        items: cartItems.map(item => ({
+          id: item.id,
+          title: item.item?.title || 'Unknown',
+          price: item.item?.price || 0,
+          framing: item.framing || 'None',
+          quantity: item.quantity || 1,
+          subtotal: item.subtotal || 0
+        }))
+      });
+    }
+
+    // Get base URL for return URLs - use environment variable or fallback to origin/localhost
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || request.headers.get('origin') || 'http://localhost:3000';
     
     // Create PayFast payment data - only include non-empty values
     const paymentData: PayFastData = {
@@ -102,8 +139,8 @@ export async function POST(request: NextRequest) {
       email_address: email,
       m_payment_id: paymentId,
       amount: parseFloat(amount).toFixed(2),
-      item_name: itemName,
-      item_description: itemDescription || itemName
+      item_name: sanitizedItemName,
+      item_description: sanitizedItemDescription
     };
     
     // Only add cell_number if it exists and is not empty
