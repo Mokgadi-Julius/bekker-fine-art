@@ -103,8 +103,16 @@ export async function POST(request: NextRequest) {
     };
     
     // Only add cell_number if it exists and is not empty
+    // Clean phone number: remove spaces, country codes, and special characters
     if (phone && phone.trim() !== '') {
-      paymentData.cell_number = phone.trim();
+      const cleanedPhone = phone.trim()
+        .replace(/^\+27\s*/, '0') // Replace +27 with 0
+        .replace(/\s+/g, '')      // Remove all spaces
+        .replace(/[^0-9]/g, '');  // Remove non-numeric characters
+      
+      if (cleanedPhone.length >= 10) {
+        paymentData.cell_number = cleanedPhone;
+      }
     }
 
     // Generate signature
