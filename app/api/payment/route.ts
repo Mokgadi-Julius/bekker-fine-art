@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// PayFast SANDBOX credentials for testing
+// Use SANDBOX credentials first to test signature generation
 const PAYFAST_MERCHANT_ID = '10000100';
 const PAYFAST_MERCHANT_KEY = '46f0cd694581a';
 const PAYFAST_PASSPHRASE = 'jt7NOE43FZPn';
-// Force sandbox for testing - change to production when ready
-const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process';
-// const PAYFAST_URL = 'https://www.payfast.co.za/eng/process'; // Production
+const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process'; // Sandbox testing
 
 interface PayFastData {
   merchant_id: string;
