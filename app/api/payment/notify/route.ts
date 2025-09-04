@@ -12,17 +12,19 @@ function generateSignature(data: Record<string, string>, passPhrase: string = ''
   const sortedKeys = Object.keys(data).sort();
   
   for (const key of sortedKeys) {
-    if (key !== 'signature' && data[key]) {
-      paramString += `${key}=${encodeURIComponent(data[key])}&`;
+    const value = data[key];
+    // Only include non-empty values and exclude signature field
+    if (key !== 'signature' && value && value.trim() !== '') {
+      paramString += `${key}=${encodeURIComponent(value)}&`;
     }
   }
   
   // Remove trailing &
   paramString = paramString.slice(0, -1);
   
-  // Add passphrase if provided
-  if (passPhrase) {
-    paramString += `&passphrase=${encodeURIComponent(passPhrase)}`;
+  // Add passphrase if provided (DO NOT URL encode the passphrase)
+  if (passPhrase && passPhrase.trim() !== '') {
+    paramString += `&passphrase=${passPhrase}`;
   }
   
   // Generate MD5 signature

@@ -5,7 +5,9 @@ import crypto from 'crypto';
 const PAYFAST_MERCHANT_ID = '10041693';
 const PAYFAST_MERCHANT_KEY = '83zgharv5v4ou';
 const PAYFAST_PASSPHRASE = 'writenowagency123';
-const PAYFAST_URL = 'https://sandbox.payfast.co.za/eng/process'; // Use https://www.payfast.co.za/eng/process for production
+const PAYFAST_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://www.payfast.co.za/eng/process'
+  : 'https://sandbox.payfast.co.za/eng/process';
 
 interface PayFastData {
   merchant_id: string;
@@ -30,17 +32,19 @@ function generateSignature(data: PayFastData, passPhrase: string = ''): string {
   const sortedKeys = Object.keys(data).sort();
   
   for (const key of sortedKeys) {
-    if (key !== 'signature' && data[key as keyof PayFastData]) {
-      paramString += `${key}=${encodeURIComponent(data[key as keyof PayFastData] as string)}&`;
+    const value = data[key as keyof PayFastData] as string;
+    // Only include non-empty values and exclude signature field
+    if (key !== 'signature' && value && value.trim() !== '') {
+      paramString += `${key}=${encodeURIComponent(value)}&`;
     }
   }
   
   // Remove trailing &
   paramString = paramString.slice(0, -1);
   
-  // Add passphrase if provided
-  if (passPhrase) {
-    paramString += `&passphrase=${encodeURIComponent(passPhrase)}`;
+  // Add passphrase if provided (DO NOT URL encode the passphrase)
+  if (passPhrase && passPhrase.trim() !== '') {
+    paramString += `&passphrase=${passPhrase}`;
   }
   
   // Generate MD5 signature
