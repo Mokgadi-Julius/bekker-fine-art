@@ -27,15 +27,21 @@ interface PayFastData {
 }
 
 function generateSignature(data: PayFastData, passPhrase: string = ''): string {
-  // Create parameter string
+  // Create parameter string in PayFast field order (not alphabetical!)
   let paramString = '';
-  const sortedKeys = Object.keys(data).sort();
   
-  for (const key of sortedKeys) {
+  // PayFast form field order as per documentation
+  const fieldOrder = [
+    'merchant_id', 'merchant_key', 'return_url', 'cancel_url', 'notify_url',
+    'name_first', 'name_last', 'email_address', 'cell_number',
+    'm_payment_id', 'amount', 'item_name', 'item_description'
+  ];
+  
+  for (const key of fieldOrder) {
     const value = data[key as keyof PayFastData] as string;
     // Only include non-empty values and exclude signature field
-    if (key !== 'signature' && value && value.trim() !== '') {
-      paramString += `${key}=${encodeURIComponent(value)}&`;
+    if (value && value.trim() !== '') {
+      paramString += `${key}=${encodeURIComponent(value.trim())}&`;
     }
   }
   
