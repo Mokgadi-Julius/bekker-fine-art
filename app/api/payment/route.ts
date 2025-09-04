@@ -27,33 +27,37 @@ interface PayFastData {
 }
 
 function generateSignature(data: PayFastData, passPhrase: string = ''): string {
-  // Create parameter string exactly as PayFast documentation specifies
+  // PayFast form signature generation - EXACT implementation from documentation
   let paramString = '';
   
-  // Build string using ALL data fields in order they appear in data object
-  // Do NOT sort - use the order as data is structured
-  for (const [key, value] of Object.entries(data)) {
-    // Skip signature field and empty values
-    if (key !== 'signature' && value && value.toString().trim() !== '') {
-      // URL encode and replace %20 with + as per PayFast requirements
-      const encodedValue = encodeURIComponent(value.toString().trim()).replace(/%20/g, '+');
+  // Process each field in the EXACT order they appear in the data object
+  // This matches the order fields are created in the paymentData object
+  Object.keys(data).forEach(key => {
+    const value = data[key as keyof PayFastData] as string;
+    
+    // Include all non-empty values except signature
+    if (key !== 'signature' && value !== undefined && value !== null && value.toString().trim() !== '') {
+      const trimmedValue = value.toString().trim();
+      // URL encode the value
+      const encodedValue = encodeURIComponent(trimmedValue);
       paramString += `${key}=${encodedValue}&`;
     }
-  }
+  });
   
-  // Remove trailing &
+  // Remove the trailing &
   paramString = paramString.slice(0, -1);
   
-  // Add passphrase if provided (DO NOT URL encode the passphrase)
+  // Add passphrase (DO NOT encode the passphrase itself)
   if (passPhrase && passPhrase.trim() !== '') {
-    paramString += `&passphrase=${passPhrase}`;
+    paramString += `&passphrase=${passPhrase.trim()}`;
   }
   
   console.log('PayFast signature string:', paramString);
   
-  // Generate MD5 signature
+  // Generate MD5 hash in lowercase
   const signature = crypto.createHash('md5').update(paramString).digest('hex');
   console.log('PayFast generated signature:', signature);
+  
   return signature;
 }
 
@@ -82,7 +86,7 @@ export async function POST(request: NextRequest) {
     // Get base URL for return URLs
     const baseUrl = request.headers.get('origin') || 'https://bekker-fine-art-production.up.railway.app';
     
-    // Create PayFast payment data
+    // Create PayFast payment data - only include non-empty values
     const paymentData: PayFastData = {
       merchant_id: PAYFAST_MERCHANT_ID,
       merchant_key: PAYFAST_MERCHANT_KEY,
@@ -92,12 +96,16 @@ export async function POST(request: NextRequest) {
       name_first: firstName,
       name_last: lastName,
       email_address: email,
-      cell_number: phone || '',
       m_payment_id: paymentId,
       amount: parseFloat(amount).toFixed(2),
       item_name: itemName,
       item_description: itemDescription || itemName
     };
+    
+    // Only add cell_number if it exists and is not empty
+    if (phone && phone.trim() !== '') {
+      paymentData.cell_number = phone.trim();
+    }
 
     // Generate signature
     paymentData.signature = generateSignature(paymentData, PAYFAST_PASSPHRASE);
