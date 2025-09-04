@@ -27,21 +27,17 @@ interface PayFastData {
 }
 
 function generateSignature(data: PayFastData, passPhrase: string = ''): string {
-  // Create parameter string in PayFast field order (not alphabetical!)
+  // Create parameter string exactly as PayFast documentation specifies
   let paramString = '';
   
-  // PayFast form field order as per documentation
-  const fieldOrder = [
-    'merchant_id', 'merchant_key', 'return_url', 'cancel_url', 'notify_url',
-    'name_first', 'name_last', 'email_address', 'cell_number',
-    'm_payment_id', 'amount', 'item_name', 'item_description'
-  ];
-  
-  for (const key of fieldOrder) {
-    const value = data[key as keyof PayFastData] as string;
-    // Only include non-empty values and exclude signature field
-    if (value && value.trim() !== '') {
-      paramString += `${key}=${encodeURIComponent(value.trim())}&`;
+  // Build string using ALL data fields in order they appear in data object
+  // Do NOT sort - use the order as data is structured
+  for (const [key, value] of Object.entries(data)) {
+    // Skip signature field and empty values
+    if (key !== 'signature' && value && value.toString().trim() !== '') {
+      // URL encode and replace %20 with + as per PayFast requirements
+      const encodedValue = encodeURIComponent(value.toString().trim()).replace(/%20/g, '+');
+      paramString += `${key}=${encodedValue}&`;
     }
   }
   
@@ -53,8 +49,12 @@ function generateSignature(data: PayFastData, passPhrase: string = ''): string {
     paramString += `&passphrase=${passPhrase}`;
   }
   
+  console.log('PayFast signature string:', paramString);
+  
   // Generate MD5 signature
-  return crypto.createHash('md5').update(paramString).digest('hex');
+  const signature = crypto.createHash('md5').update(paramString).digest('hex');
+  console.log('PayFast generated signature:', signature);
+  return signature;
 }
 
 export async function POST(request: NextRequest) {
