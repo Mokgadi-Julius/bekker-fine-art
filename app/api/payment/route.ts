@@ -27,34 +27,33 @@ interface PayFastData {
 }
 
 function generateSignature(data: PayFastData, passPhrase: string = ''): string {
-  // PayFast form signature generation - EXACT implementation from documentation
+  // PayFast FORM signature - follows documentation exactly
   let paramString = '';
   
-  // Process each field in the EXACT order they appear in the data object
-  // This matches the order fields are created in the paymentData object
+  // Create parameter string with ALL values (including empty ones for form submission)
   Object.keys(data).forEach(key => {
     const value = data[key as keyof PayFastData] as string;
     
-    // Include all non-empty values except signature
-    if (key !== 'signature' && value !== undefined && value !== null && value.toString().trim() !== '') {
-      const trimmedValue = value.toString().trim();
-      // URL encode the value
-      const encodedValue = encodeURIComponent(trimmedValue);
+    // Skip signature field only
+    if (key !== 'signature') {
+      const stringValue = value || ''; // Include empty values
+      // URL encode with proper format - trim first, then encode
+      const encodedValue = encodeURIComponent(stringValue.toString().trim());
       paramString += `${key}=${encodedValue}&`;
     }
   });
   
-  // Remove the trailing &
+  // Remove trailing &
   paramString = paramString.slice(0, -1);
   
-  // Add passphrase (DO NOT encode the passphrase itself)
+  // Add passphrase - DO NOT URL encode
   if (passPhrase && passPhrase.trim() !== '') {
     paramString += `&passphrase=${passPhrase.trim()}`;
   }
   
   console.log('PayFast signature string:', paramString);
   
-  // Generate MD5 hash in lowercase
+  // Generate MD5 signature in lowercase
   const signature = crypto.createHash('md5').update(paramString).digest('hex');
   console.log('PayFast generated signature:', signature);
   
